@@ -182,6 +182,7 @@ class ConnectMySQL {
 			*/
 			$ex_data = array();
 			foreach ($values as $key => $value) {
+				$key = self::remove_operator($key);
 				$ex_data[':' . $key] = $value;
 			}
 
