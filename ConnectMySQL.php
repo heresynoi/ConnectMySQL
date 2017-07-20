@@ -310,5 +310,24 @@ class ConnectMySQL {
 		return $data;
 	}
 
+/**
+ * queryFind
+ * クエリ検索
+ *
+ * @param string $query
+ * @return array
+ */
+	public function queryFind($query = null){
+
+		if (empty($query)) {
+			return array();
+		}
+
+		$sth = $this->pdo->prepare($query);
+		$sth->execute();
+
+		return $sth->fetchAll();
+
+	}
 }
 ?>
