@@ -3,18 +3,20 @@
 /**
  * 
  * ConnectMySQL
- * ver : 1.0
+ * ver : 1.1
  *
 */
 
-class ConnectMySQL{
+class ConnectMySQL {
 
 	public $id = null;
+
+	private $operators = array('>', '<', '>=', '<=');
 
 	function __construct(){
 
 		//環境設定
-		$db_name = 'sql_test';
+		$db_name = 'db_name';
 		$host = '127.0.0.1';
 		$user_name = "root";
 		$password = "root";
@@ -28,13 +30,16 @@ class ConnectMySQL{
 		try {
 			$this->pdo = new PDO($dsn,$user_name,$password,array(PDO::ATTR_EMULATE_PREPARES => false));
 		} catch (PDOException $e) {
-			exit('データベース接続失敗。'.$e->getMessage());
+			exit('データベース接続失敗：'.$e->getMessage());
 		}
 	}
 
-	/**
-	 * 全件表示
-	*/
+/**
+ * 全件表示
+ *
+ * @param string $table
+ * @param order $table
+*/
 	public function all($table = null, $order = "id DESC"){
 
 		$data = array();
@@ -53,9 +58,11 @@ class ConnectMySQL{
 		return $data;
 	}
 
-	/**
-	 * 詳細表示
-	*/
+/**
+ * 詳細表示
+ *
+ * @param string $table
+*/
 	public function view($table = null){
 
 		$data = array();
@@ -73,14 +80,39 @@ class ConnectMySQL{
 
 	}
 
-	/**
-	 * 追加、編集、検索共通処理
-	*/
-	public function Common($table = null, $action = null, $post_data = array()){
+/**
+ * remove_operator
+ *　演算子除去
+ *
+ * @param string $field
+ * @return string
+ */
+	public function remove_operator($field = null) {
+
+		if (!empty($field)) {
+			if (strrpos($field, ' ') !== false) {
+				$field_ar = explode(' ', $field);
+				$field = $field_ar[0];
+			}
+		}
+
+		return $field;
+	}
+
+
+/**
+ * 追加、編集、検索共通処理
+ *
+ * @param string $table
+ * @param string $action
+ * @param array $values
+ * @param string $order
+*/
+	public function Common($table = null, $action = null, $values = array(), $order = "id DESC"){
 
 		//Field設定
 		$field = array();
-		foreach ($post_data as $k => $v) {
+		foreach ($values as $k => $v) {
 			$field[] = $k;
 		}
 
@@ -99,9 +131,9 @@ class ConnectMySQL{
 			foreach ($field as $filed_v) {
 				//最初
 				if($filed_v === reset($field)){
-					$edit_filed .= $filed_v . ' =:' . $filed_v;
+					$edit_filed .= $filed_v . ' = :' . $filed_v;
 				}else{
-					$edit_filed .= ',' . $filed_v . ' =:' . $filed_v;
+					$edit_filed .= ',' . $filed_v . ' = :' . $filed_v;
 				}
 				
 			}
@@ -113,17 +145,33 @@ class ConnectMySQL{
 
 			//sql用に成型
 			$search_filed = null;
-			foreach ($field as $filed_v) {
+			foreach ($field as $key => $filed_v) {
+
+				//演算子
+				$operator = '=';
+				if (strrpos($filed_v, ' ') !== false) {
+					$field_ar = explode(' ', $filed_v);
+					if (in_array($field_ar[1], $this->operators)) {
+						$operator = $field_ar[1];
+					}
+				}
+
+				//演算子除去
+				$filed_v = self::remove_operator($filed_v);
+
 				//最初
-				if($filed_v === reset($field)){
-					$search_filed .= $filed_v . ' =:' . $filed_v;
+				if($key == 0){
+					$search_filed .= $filed_v . " {$operator} :" . $filed_v;
 				}else{
-					$search_filed .= ' AND' . $filed_v . ' =:' . $filed_v;
+					$search_filed .= ' AND ' . $filed_v . " {$operator} :" . $filed_v;
 				}
 				
 			}
 
-			$sql = "SELECT * FROM {$table} WHERE {$search_filed} ORDER BY id DESC";
+			$sql = "SELECT * FROM {$table} WHERE {$search_filed} ORDER BY " . $order;
+
+			var_dump($sql);
+
 			$sth = $this->pdo->prepare($sql);
 
 		}
@@ -134,10 +182,12 @@ class ConnectMySQL{
 			/*
 			* find
 			*/
-
-			foreach ($post_data as $key => $value) {
-				$sth->execute(array(':' . $key => $post_data[$key]));
+			$ex_data = array();
+			foreach ($values as $key => $value) {
+				$ex_data[':' . $key] = $value;
 			}
+
+			$sth->execute($ex_data);
 
 			return $sth->fetchAll();
 
@@ -148,12 +198,12 @@ class ConnectMySQL{
 			*/
 
 			//data set
-			if(!empty($post_data)){
-				foreach ($post_data as $key => $value) {
+			if(!empty($values)){
+				foreach ($values as $key => $value) {
 					if(is_int($value)){
-						$sth->bindParam(':' . $key, $post_data[$key], PDO::PARAM_INT);
+						$sth->bindParam(':' . $key, $values[$key], PDO::PARAM_INT);
 					}else{
-						$sth->bindParam(':' . $key, $post_data[$key], PDO::PARAM_STR);
+						$sth->bindParam(':' . $key, $values[$key], PDO::PARAM_STR);
 					}
 				}
 			}
@@ -165,15 +215,19 @@ class ConnectMySQL{
 			}
 		}
 
+
 	}
 
-	/**
-	 * 追加
-	*/
-	public function add($table = null, $post_data = array()){
+/**
+ * 追加
+ *
+ * @param string $table
+ * @param array $values
+*/
+	public function add($table = null, $values = array()){
 
 		if(!empty($table)){
-			if($this->Common($table,__FUNCTION__,$post_data)){
+			if($this->Common($table,__FUNCTION__,$values)){
 				return true;
 			}else{
 				return false;
@@ -184,13 +238,16 @@ class ConnectMySQL{
 
 	}
 
-	/**
-	 * 編集
-	*/
-	public function edit($table = null, $post_data = array()){
+/**
+ * 編集
+ *
+ * @param string $table
+ * @param array $values
+*/
+	public function edit($table = null, $values = array()){
 
 		if(!empty($table) && !empty($this->id)){
-			if($this->Common($table,__FUNCTION__,$post_data)){
+			if($this->Common($table,__FUNCTION__,$values)){
 				return true;
 			}else{
 				return false;
@@ -201,9 +258,11 @@ class ConnectMySQL{
 
 	}
 
-	/**
-	 * 削除
-	*/
+/**
+ * 削除
+ *
+ * @param string $table
+*/
 	public function delete($table = null){
 
 		if(!empty($table)){
@@ -234,15 +293,19 @@ class ConnectMySQL{
 
 	}
 
-	/**
-	 * 検索
-	*/
-	public function find($table = null, $post_data = array()){
+/**
+ * 検索
+ *
+ * @param string $table
+ * @param array $values
+ * @param string $order
+*/
+	public function find($table = null, $values = array(), $order = "id DESC"){
 
 		$data = array();
 
 		if(!empty($table)){
-			$data = $this->Common($table,__FUNCTION__,$post_data);
+			$data = $this->Common($table ,__FUNCTION__, $values, $order);
 		}
 
 		return $data;
