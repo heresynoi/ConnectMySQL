@@ -170,8 +170,6 @@ class ConnectMySQL {
 
 			$sql = "SELECT * FROM {$table} WHERE {$search_filed} ORDER BY " . $order;
 
-			var_dump($sql);
-
 			$sth = $this->pdo->prepare($sql);
 
 		}
