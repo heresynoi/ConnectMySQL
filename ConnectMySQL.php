@@ -15,22 +15,25 @@ class ConnectMySQL {
 
 	function __construct(){
 
-		//環境設定
-		$db_name = 'db_name';
-		$host = '127.0.0.1';
-		$user_name = "root";
-		$password = "root";
+		$host = getenv('DB_HOST');
+		$db_name = getenv('DB_NAME');
+		$user_name = getenv('DB_USER');
+		$password = getenv('DB_PASS');
+		$location = getenv('LOCATION');
 
 		//DSN socket,portは無しでも
 		$dsn = "mysql:dbname={$db_name};";
 		$dsn .= "host={$host};";
-		$dsn .= 'unix_socket=/Applications/MAMP/tmp/mysql/mysql.sock;';
-		$dsn .= 'port=8889';
+
+		if ($location == 'local') {
+			$dsn .= 'unix_socket=/Applications/MAMP/tmp/mysql/mysql.sock;';
+			$dsn .= 'port=8889';
+		}
 
 		try {
 			$this->pdo = new PDO($dsn,$user_name,$password,array(PDO::ATTR_EMULATE_PREPARES => false));
 		} catch (PDOException $e) {
-			exit('データベース接続失敗：'.$e->getMessage());
+			exit('Error：'.$e->getMessage());
 		}
 	}
 
