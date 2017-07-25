@@ -19,15 +19,16 @@ class ConnectMySQL {
 		$db_name = getenv('DB_NAME');
 		$user_name = getenv('DB_USER');
 		$password = getenv('DB_PASS');
+		$port = getenv('DB_PORT');
 		$location = getenv('LOCATION');
 
 		//DSN socket,portは無しでも
 		$dsn = "mysql:dbname={$db_name};";
 		$dsn .= "host={$host};";
+		$dsn .= "port={$port};";
 
 		if ($location == 'local') {
 			$dsn .= 'unix_socket=/Applications/MAMP/tmp/mysql/mysql.sock;';
-			$dsn .= 'port=8889';
 		}
 
 		try {
